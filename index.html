@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>LiveKit Audio Room</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.js"></script>
+</head>
+
+<body>
+    <h1>Join Audio Room</h1>
+    <button onclick="joinRoom()">Join Room</button>
+
+    <script>
+        async function joinRoom() {
+            const identity = 'user-' + Math.floor(Math.random() * 1000);
+            const roomName = 'audio-room';
+
+            const res = await fetch('http://localhost:3000/api/livekit/generatetoken', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identity, room: roomName }),
+            });
+
+            const data = await res.json();
+            const token = data.token;
+            const wsUrl = data.wsUrl;
+
+            const room = new Room();
+            console.log("ROOOOMMMM",room)
+            await room.connect(wsUrl, token);
+
+            await room.localParticipant.setMicrophoneEnabled(true);
+
+            room.on('participantConnected', participant => {
+                console.log(`${participant.identity} joined`);
+            });
+
+            room.on('trackSubscribed', (track, publication, participant) => {
+                if (track.kind === 'audio') {
+                    track.attach().play();
+                }
+            });
+
+            console.log('Joined room successfully');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,130 @@
+***************************************************************************************************************************************
+-----  Add the SQL query to the file that has been modified for the database table added by Saikiran@2025-07-09------- 
+***************************************************************************************************************************************
+
+#1 Creation of users table
+    CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    assistant_name      VARCHAR(100) NOT NULL,
+    business_info       TEXT,
+    business_name       VARCHAR(150),
+    business_type       VARCHAR(100),
+    call_transf         TEXT,
+    confirm_password    VARCHAR(255) NOT NULL,
+    country_code        VARCHAR(10),
+    email              VARCHAR(255) NOT NULL UNIQUE,
+    greeting_phrase     TEXT,
+    login_password      VARCHAR(255) NOT NULL,
+    phone_number        VARCHAR(20),
+    username           VARCHAR(150) NOT NULL UNIQUE,
+    voice_selection     VARCHAR(100),
+    token              TEXT,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_at        TIMESTAMP,
+    deleted            INTEGER DEFAULT 0 CHECK (deleted IN (0, 1))
+    );
+
+    -- Indexes for performance
+    CREATE INDEX idx_users_email ON users (email);
+    CREATE INDEX idx_users_username ON users (username);
+    CREATE INDEX idx_users_phone_number ON users (phone_number);
+    CREATE INDEX idx_users_deleted ON users (deleted);
+
+#2 Create audit_logs table
+
+    CREATE TABLE audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action TEXT NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Optional indexes for performance
+    CREATE INDEX idx_audit_logs_user_id ON audit_logs (user_id);
+    CREATE INDEX idx_audit_logs_action ON audit_logs (action);
+    CREATE INDEX idx_audit_logs_created_at ON audit_logs (created_at);
+
+#3 create assistants table
+    CREATE TABLE assistants (
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT NOW(),
+        modified_at TIMESTAMP DEFAULT NULL,
+        deleted INTEGER DEFAULT 0 CHECK (deleted IN (0, 1)),
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        metadata JSONB
+    );
+
+    CREATE INDEX idx_assistants_metadata ON assistants USING GIN (metadata);
+    CREATE INDEX idx_assistants_metadata_provider ON assistants ((metadata->>'provider'));
+    CREATE INDEX idx_assistants_metadata_assistantType ON assistants ((metadata->>'assistantType'));
+    CREATE INDEX idx_assistants_user_id ON assistants (user_id);
+
+
+#4 New table for assistants 
+CREATE TABLE assistants (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT NOW(),
+    modified_at TIMESTAMP DEFAULT NULL,
+    deleted INTEGER DEFAULT 0 CHECK (deleted IN (0, 1)),
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    assistant_name VARCHAR(150) DEFAULT NULL,
+    languages VARCHAR(150) DEFAULT NULL,
+    prompt Text DEFAULT NULL,
+    greeting Text DEFAULT NULL,
+    assistant_type VARCHAR(150) DEFAULT NULL,
+    provider VARCHAR(150) DEFAULT NULL,
+    model VARCHAR(150) DEFAULT NULL,
+    temperature VARCHAR(150) DEFAULT NULL,
+    max_token VARCHAR(150) DEFAULT NULL,
+    knowledge_base VARCHAR(150) DEFAULT NULL,
+    business_name VARCHAR(150) DEFAULT NULL,
+    tts JSONB DEFAULT NULL,
+    stt JSONB DEFAULT NULL,
+    settings JSONB DEFAULT NULL,
+    requestData JSONB DEFAULT NULL
+);
+-- For filtering soft-deleted data
+CREATE INDEX idx_assistants_not_deleted ON assistants(id) WHERE deleted = 0;
+
+-- For joining/filtering by user
+CREATE INDEX idx_assistants_user_id ON assistants(user_id);
+
+
+CREATE TABLE action_workflows (
+    id SERIAL PRIMARY KEY,
+    assistant_id INTEGER NOT NULL REFERENCES assistants(id) ON DELETE CASCADE,
+
+    action_type VARCHAR(150) DEFAULT NULL,
+    scenario_description TEXT DEFAULT NULL,
+    text_message TEXT DEFAULT NULL,
+    voice_response TEXT DEFAULT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    modified_at TIMESTAMP DEFAULT NULL
+);
+-- For fast assistant lookup
+CREATE INDEX idx_action_workflows_assistant_id ON action_workflows(assistant_id);
+
+CREATE TABLE calltransfer_workflows (
+    id SERIAL PRIMARY KEY,
+    assistant_id INTEGER NOT NULL REFERENCES assistants(id) ON DELETE CASCADE,
+
+    scenario_type VARCHAR(150) DEFAULT NULL,
+    scenario_description TEXT DEFAULT NULL,
+    voice_response TEXT DEFAULT NULL,
+    phone_number VARCHAR(50) DEFAULT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    modified_at TIMESTAMP DEFAULT NULL
+);
+CREATE INDEX idx_calltransfer_assistant_id ON calltransfer_workflows(assistant_id);
+
+TRUNCATE TABLE 
+    calltransfer_workflows,
+    action_workflows,
+    assistants,
+    users,
+    audit_logs
+RESTART IDENTITY CASCADE;
+

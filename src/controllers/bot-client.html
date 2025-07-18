@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>LiveKit Bot</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.js"></script>
+</head>
+
+<body>
+    <script>
+        (async () => {
+            const room = new livekitClient.Room();
+            const url = '{{LIVEKIT_URL}}';
+            const token = '{{LIVEKIT_TOKEN}}';
+
+            room.on('trackSubscribed', (track, publication, participant) => {
+                if (track.kind === 'audio') {
+                    const audioEl = track.attach();
+                    audioEl.play();
+                    console.log('[BOT] Subscribed to audio from', participant.identity);
+                }
+            });
+
+            await room.connect(url, token, { autoSubscribe: true });
+            console.log('[BOT] Connected to room');
+        })();
+    </script>
+</body>
+
+</html>
